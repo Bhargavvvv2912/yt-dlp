@@ -266,7 +266,7 @@ class DependencyAgent:
         print("#"*70 + "\n")
 
     def _run_final_health_check(self):
-        print("\n" + "#"*70); print("### FINAL SYSTEM HEALTH CHECK ###"); print("#"*70 + "\n")
+        print("\n" + "#"*70); print("### SYSTEM HEALTH CHECK ###"); print("#"*70 + "\n")
         venv_dir = Path("./final_venv")
         if venv_dir.exists(): shutil.rmtree(venv_dir)
         venv.create(venv_dir, with_pip=True)
@@ -279,7 +279,7 @@ class DependencyAgent:
 
         success, metrics, _ = validate_changes(python_executable, self.config, group_title="Final System Health Check")
         if success and metrics and "not available" not in metrics:
-            print("\n" + "="*70); print("=== FINAL METRICS FOR THE FULLY UPDATED ENVIRONMENT ===")
+            print("\n" + "="*70); print("=== METRICS FOR THE FULLY UPDATED ENVIRONMENT ===")
             print("\n".join([f"  {line}" for line in metrics.split('\n')])); print("="*70)
         elif success:
             print("\n" + "="*70); print("=== Final validation passed (no metrics). ==="); print("="*70)
