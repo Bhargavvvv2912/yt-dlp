@@ -145,6 +145,10 @@ class DependencyAgent:
                 lines = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
             for line in lines:
                 if '==' not in line: continue
+                parts = line.split('==', 1)
+                package = parts[0].strip()
+                version_and_marker = parts[1]
+                current_version = version_and_marker.split(';')[0].strip()
                 package, current_version = line.split('==')
                 latest_version = self.get_latest_version(package)
                 if latest_version and parse_version(latest_version) > parse_version(current_version):
