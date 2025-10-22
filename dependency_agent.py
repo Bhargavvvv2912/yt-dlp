@@ -8,7 +8,7 @@ from agent_logic import DependencyAgent
 # --- Configuration for the yt-dlp Experiment ---
 AGENT_CONFIG = {
     # 1. Point to the file our YAML workflow will create
-    "REQUIREMENTS_FILE": "generated-requirements.txt",
+    "REQUIREMENTS_FILE": "requirements.txt",
     
     # 2. Implement the "smoke test first, then report on pytest" strategy
     "VALIDATION_CONFIG": {
