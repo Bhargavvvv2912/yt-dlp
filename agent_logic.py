@@ -132,7 +132,7 @@ class DependencyAgent:
         final_successful_updates = {}
         final_failed_updates = {}
         pass_num = 0
-        
+        self._run_final_health_check()
         while pass_num < self.config["MAX_RUN_PASSES"]:
             pass_num += 1
             start_group(f"UPDATE PASS {pass_num}/{self.config['MAX_RUN_PASSES']}")
