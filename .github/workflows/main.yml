@@ -25,34 +25,40 @@ jobs:
         with:
           python-version: '3.11'
 
-      # --- This section is DIFFERENT and REQUIRED for yt-dlp ---
-      - name: Install CI Tools for Dependency Generation
-        run: python -m pip install pip-tools toml
+      # --- THIS IS THE FINAL, CORRECTED, "SMART CACHE" LOGIC ---
+      - name: Cache and restore generated-requirements.txt
+        id: cache-reqs
+        uses: actions/cache@v3
+        with:
+          path: generated-requirements.txt
+          # The key is based on the OS, the text 'reqs-', and a HASH of the pyproject.toml file.
+          # If pyproject.toml changes, this key will change, causing a cache miss.
+          key: ${{ runner.os }}-reqs-${{ hashFiles('yt-dlp/pyproject.toml') }}
 
-      - name: Generate requirements.txt from pyproject.toml
+      - name: Generate requirements.txt if cache was missed
+        # This step ONLY runs if the cache step above did not find a valid file.
+        if: steps.cache-reqs.outputs.cache-hit != 'true'
         run: |
-          echo "Dynamically discovering all dependencies for yt-dlp..."
+          echo "Cache miss or pyproject.toml changed. Regenerating requirements.txt..."
+          python -m pip install pip-tools toml
+
           python -c "
           import toml; from pathlib import Path
           project_dir = Path('./yt-dlp')
           toml_path = project_dir / 'pyproject.toml'
           data = toml.load(toml_path)
           
-          # We need the build, default (runtime), and test dependencies
           build_deps = data.get('build-system', {}).get('requires', [])
           default_deps = data.get('project', {}).get('optional-dependencies', {}).get('default', [])
           test_deps = data.get('project', {}).get('optional-dependencies', {}).get('test', [])
-
-          # We are NOT using an editable install here, as we are in the 'User Loop'.
           all_deps = ['yt-dlp'] + build_deps + default_deps + test_deps
-
           with open('requirements.in', 'w') as f:
               for dep in all_deps: f.write(f'{dep}\n')
           "
           pip-compile --resolver=backtracking --output-file generated-requirements.txt requirements.in
 
-      # --- The rest of the workflow follows the new, robust pattern ---
-      - name: Cache pip packages
+      # --- The rest of the workflow is now robust ---
+      - name: Cache pip packages based on the (potentially new) requirements file
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -70,14 +76,12 @@ jobs:
         run: |
           git config --global user.name 'AURA Dependency Agent'
           git config --global user.email 'aura-agent@users.noreply.github.com'
-          
           TARGET_FILE="generated-requirements.txt"
           git add $TARGET_FILE
           if git diff-index --quiet HEAD; then
             echo "No dependency changes to commit."
             exit 0
           fi
-          
           echo "Dependencies have changed. Committing and pushing..."
           git commit -m "chore(deps): Autonomously manage yt-dlp dependencies [skip ci]"
           git push
