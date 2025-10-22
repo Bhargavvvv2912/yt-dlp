@@ -12,7 +12,7 @@ AGENT_CONFIG = {
     
     # 2. Implement the "smoke test first, then report on pytest" strategy
     "VALIDATION_CONFIG": {
-        "type": "smoke_test_with_pytest_report",
+        "type": "script",
         "smoke_test_script": "validation_smoke_ytdlp.py",
         "pytest_target": "yt_dlp test" # The command to run pytest for yt-dlp
     },
