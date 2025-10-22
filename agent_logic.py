@@ -146,21 +146,19 @@ class DependencyAgent:
             
             for line in lines:
                 if '==' not in line: continue
-
-                # --- THIS IS THE FINAL, CORRECT, ROBUST PARSER ---
-                parts = line.split('==', 1)
-                if len(parts) != 2: continue # Safety check for malformed lines
+                package_part = line.split(';')[0].strip()
                 
+                # 2. Now, we are left with a clean 'package==version' string, which is safe to split.
+                parts = package_part.split('==')
+                if len(parts) != 2: continue # Safety check for malformed lines like '-e .'
+
                 package = self._get_package_name_from_spec(parts[0].strip())
-                version_and_marker = parts[1]
-                current_version = version_and_marker.split(';')[0].strip()
-                # --- END OF FIX ---
+                current_version = parts[1].strip()
+                # --- END OF YOUR FIX ---
 
                 latest_version = self.get_latest_version(package)
                 if latest_version and parse_version(latest_version) > parse_version(current_version):
                     packages_to_update.append((package, current_version, latest_version))
-
-
             if not packages_to_update:
                 if pass_num == 1:
                     print("\nInitial baseline is already fully up-to-date. The upstream resolver found the optimal versions.")
