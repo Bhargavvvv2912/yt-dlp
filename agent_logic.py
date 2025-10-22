@@ -143,16 +143,23 @@ class DependencyAgent:
             packages_to_update = []
             with open(pass_baseline_reqs_path, 'r') as f:
                 lines = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+            
             for line in lines:
                 if '==' not in line: continue
+
+                # --- THIS IS THE FINAL, CORRECT, ROBUST PARSER ---
                 parts = line.split('==', 1)
-                package = parts[0].strip()
+                if len(parts) != 2: continue # Safety check for malformed lines
+                
+                package = self._get_package_name_from_spec(parts[0].strip())
                 version_and_marker = parts[1]
                 current_version = version_and_marker.split(';')[0].strip()
-                package, current_version = line.split('==')
+                # --- END OF FIX ---
+
                 latest_version = self.get_latest_version(package)
                 if latest_version and parse_version(latest_version) > parse_version(current_version):
                     packages_to_update.append((package, current_version, latest_version))
+
 
             if not packages_to_update:
                 if pass_num == 1:
