@@ -123,6 +123,7 @@ class DependencyAgent:
         
         is_pinned, _ = self._get_requirements_state()
         if not is_pinned:
+            print("INFO: Unpinned dependencies detected in the Golden Record. Running bootstrap to find and validate a stable baseline.")
             self._bootstrap_unpinned_requirements()
             is_pinned, _ = self._get_requirements_state()
             if not is_pinned:

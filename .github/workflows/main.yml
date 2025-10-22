@@ -14,7 +14,7 @@ jobs:
         working-directory: ${{ github.workspace }}
 
     steps:
-      - name: Checkout Experiment Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Clone yt-dlp Repository
@@ -25,23 +25,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      # --- THIS IS THE FINAL, CORRECTED, "SMART CACHE" LOGIC ---
-      - name: Cache and restore generated-requirements.txt
-        id: cache-reqs
-        uses: actions/cache@v3
-        with:
-          path: generated-requirements.txt
-          # The key is based on the OS, the text 'reqs-', and a HASH of the pyproject.toml file.
-          # If pyproject.toml changes, this key will change, causing a cache miss.
-          key: ${{ runner.os }}-reqs-${{ hashFiles('yt-dlp/pyproject.toml') }}
-
-      - name: Generate requirements.txt if cache was missed
-        # This step ONLY runs if the cache step above did not find a valid file.
-        if: steps.cache-reqs.outputs.cache-hit != 'true'
+      # --- This is Your New "Reconciliation" Phase ---
+      - name: Reconcile Golden Record with pyproject.toml
         run: |
-          echo "Cache miss or pyproject.toml changed. Regenerating requirements.txt..."
+          echo "Phase 1: Reconciling requirements.txt with the project's source of truth..."
+          
+          # 1. Install the necessary tools for this phase
           python -m pip install pip-tools toml
 
+          # 2. Generate the "Ideal Future State" from pyproject.toml
+          # This represents the most up-to-date, installable set of dependencies.
           python -c "
           import toml; from pathlib import Path
           project_dir = Path('./yt-dlp')
@@ -51,37 +44,54 @@ jobs:
           build_deps = data.get('build-system', {}).get('requires', [])
           default_deps = data.get('project', {}).get('optional-dependencies', {}).get('default', [])
           test_deps = data.get('project', {}).get('optional-dependencies', {}).get('test', [])
-          all_deps = ['yt-dlp'] + build_deps + default_deps + test_deps
+          
+          # We include yt-dlp itself to get its core dependencies resolved.
+          all_deps_for_resolver = ['yt-dlp'] + build_deps + default_deps + test_deps
+          
           with open('requirements.in', 'w') as f:
-              for dep in all_deps: f.write(f'{dep}\n')
+              for dep in all_deps_for_resolver:
+                  f.write(f'{dep}\n')
           "
-          pip-compile --resolver=backtracking --output-file generated-requirements.txt requirements.in
+          pip-compile --resolver=backtracking --output-file temp-ideal-state.txt requirements.in
+          echo "--- Ideal State generated in temp-ideal-state.txt ---"
 
-      # --- The rest of the workflow is now robust ---
-      - name: Cache pip packages based on the (potentially new) requirements file
+          # 3. Run your new, smart reconciliation script.
+          # This will intelligently update our Golden Record (requirements.txt).
+          python reconcile.py
+          echo "--- Reconciliation with requirements.txt complete ---"
+
+      # --- End of the new phase ---
+
+      - name: Cache pip packages
         uses: actions/cache@v3
         with:
+          # The pip cache is based on our stable, committed Golden Record.
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('generated-requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
       - name: Install agent dependencies
         run: pip install google-generativeai pypi-simple packaging
 
-      - name: Run the Autonomous Agent
+      - name: Run the Autonomous Agent (The Refiner)
+        # The agent now receives a perfectly prepared requirements.txt file.
         run: python dependency_agent.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       
-      - name: Commit and push changes if any
+      - name: Commit and push changes
         run: |
           git config --global user.name 'AURA Dependency Agent'
           git config --global user.email 'aura-agent@users.noreply.github.com'
-          TARGET_FILE="generated-requirements.txt"
+          
+          # The agent's final output is the new Golden Record.
+          TARGET_FILE="requirements.txt"
+          
           git add $TARGET_FILE
           if git diff-index --quiet HEAD; then
-            echo "No dependency changes to commit."
+            echo "No changes to the Golden Record to commit."
             exit 0
           fi
-          echo "Dependencies have changed. Committing and pushing..."
-          git commit -m "chore(deps): Autonomously manage yt-dlp dependencies [skip ci]"
+          
+          echo "The Golden Record (requirements.txt) has been updated. Committing..."
+          git commit -m "chore(deps): Autonomously update Golden Record for yt-dlp [skip ci]"
           git push
