@@ -13,8 +13,8 @@ Pygments==2.19.2
 pytest==9.0.2
 pytest-rerunfailures==16.1
 requests==2.32.5
-trove-classifiers==2025.12.1.14
+trove-classifiers==2026.1.12.15
 urllib3==2.6.3
-websockets==15.0.1
+websockets==16.0
 yt-dlp==2025.12.8
 yt-dlp-ejs==0.3.2
