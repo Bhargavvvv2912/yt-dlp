@@ -5,7 +5,7 @@ hatchling==1.28.0
 idna==3.11
 iniconfig==2.3.0
 mutagen==1.47.0
-packaging==25.0
+packaging==26.0
 pathspec==1.0.3
 pluggy==1.6.0
 pycryptodomex==3.23.0
